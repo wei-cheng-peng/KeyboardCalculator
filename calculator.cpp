@@ -1,6 +1,7 @@
 #include "calculator.h"
 #include "ui_calculator.h"
 
+#include <QKeyEvent>
 #include <QPushButton>
 
 Calculator::Calculator(QWidget *parent)
@@ -34,6 +35,59 @@ Calculator::Calculator(QWidget *parent)
 Calculator::~Calculator()
 {
     delete ui;
+}
+
+void Calculator::keyPressEvent(QKeyEvent *event)
+{
+    // 键盘只做“按键 -> 统一处理函数”的映射，不写任何独立计算逻辑，
+    // 因此鼠标与键盘天然复用同一套代码，行为保持一致
+    switch (event->key()) {
+    case Qt::Key_0:
+    case Qt::Key_1:
+    case Qt::Key_2:
+    case Qt::Key_3:
+    case Qt::Key_4:
+    case Qt::Key_5:
+    case Qt::Key_6:
+    case Qt::Key_7:
+    case Qt::Key_8:
+    case Qt::Key_9:
+        inputDigit(event->key() - Qt::Key_0);
+        break;
+    case Qt::Key_Period:
+    case Qt::Key_Comma:
+        inputPoint();
+        break;
+    case Qt::Key_Plus:
+        inputOperator("+");
+        break;
+    case Qt::Key_Minus:
+        inputOperator("−");
+        break;
+    case Qt::Key_Asterisk:
+        inputOperator("×");
+        break;
+    case Qt::Key_Slash:
+        inputOperator("÷");
+        break;
+    case Qt::Key_Equal:
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+        inputEquals();
+        break;
+    case Qt::Key_Backspace:
+        inputBackspace();
+        break;
+    case Qt::Key_Escape:
+    case Qt::Key_Delete:
+    case Qt::Key_C:
+        resetAll();
+        break;
+    default:
+        QWidget::keyPressEvent(event);   // 不处理的按键交给父类
+        return;
+    }
+    event->accept();
 }
 
 void Calculator::onDigitClicked()

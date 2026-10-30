@@ -18,6 +18,10 @@ public:
     explicit Calculator(QWidget *parent = nullptr);
     ~Calculator() override;
 
+protected:
+    // 重写键盘事件：把物理按键映射到与鼠标按钮相同的处理函数
+    void keyPressEvent(QKeyEvent *event) override;
+
 private slots:
     void onDigitClicked();          // 数字按钮 0-9 的统一槽函数
     void onPointClicked();          // 小数点按钮
