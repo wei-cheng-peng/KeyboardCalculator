@@ -20,9 +20,15 @@ public:
 
 private slots:
     void onDigitClicked();          // 数字按钮 0-9 的统一槽函数
+    void onPointClicked();          // 小数点按钮
+    void onBackspaceClicked();      // 退格按钮
+    void onClearClicked();          // 清除按钮
 
 private:
     void inputDigit(int digit);     // 数字输入的核心处理
+    void inputPoint();              // 小数点处理
+    void inputBackspace();          // 退格处理
+    void resetAll();                // 全部清除
     void refreshDisplay();          // 用 m_currentInput 刷新显示框
 
     Ui::Calculator *ui;

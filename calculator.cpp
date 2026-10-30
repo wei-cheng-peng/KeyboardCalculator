@@ -17,6 +17,10 @@ Calculator::Calculator(QWidget *parent)
         connect(button, &QPushButton::clicked, this, &Calculator::onDigitClicked);
     }
 
+    connect(ui->btnPoint, &QPushButton::clicked, this, &Calculator::onPointClicked);
+    connect(ui->btnBackspace, &QPushButton::clicked, this, &Calculator::onBackspaceClicked);
+    connect(ui->btnClear, &QPushButton::clicked, this, &Calculator::onClearClicked);
+
     refreshDisplay();
 }
 
@@ -40,6 +44,47 @@ void Calculator::inputDigit(int digit)
     } else {
         m_currentInput += QString::number(digit);  // 正常追加
     }
+    refreshDisplay();
+}
+
+void Calculator::onPointClicked()
+{
+    inputPoint();
+}
+
+void Calculator::onBackspaceClicked()
+{
+    inputBackspace();
+}
+
+void Calculator::onClearClicked()
+{
+    resetAll();
+}
+
+void Calculator::inputPoint()
+{
+    // 同一个操作数只允许出现一个小数点，重复点击直接忽略
+    if (m_currentInput.contains('.')) {
+        return;
+    }
+    m_currentInput += '.';
+    refreshDisplay();
+}
+
+void Calculator::inputBackspace()
+{
+    m_currentInput.chop(1);
+    if (m_currentInput.isEmpty()) {
+        m_currentInput = "0";   // 删空后回到初始的 0
+    }
+    refreshDisplay();
+}
+
+void Calculator::resetAll()
+{
+    m_currentInput = "0";
+    ui->labelHistory->clear();
     refreshDisplay();
 }
 
