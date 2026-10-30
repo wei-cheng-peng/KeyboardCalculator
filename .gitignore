@@ -1,0 +1,15 @@
+# 构建目录
+build/
+build-*/
+cmake-build-*/
+
+# Qt Creator 本地用户配置
+*.user
+*.user.*
+
+# 编译产物
+*.o
+*.obj
+*.exe
+Makefile
+.qt/
