@@ -46,6 +46,9 @@ void Calculator::onDigitClicked()
 
 void Calculator::inputDigit(int digit)
 {
+    if (m_hasError) {
+        return;   // 错误状态下锁定输入，只能按 C 清除
+    }
     if (m_waitingForOperand) {
         m_currentInput = QString::number(digit);   // 运算符后输入新数字，覆盖旧显示
         m_waitingForOperand = false;
@@ -74,6 +77,9 @@ void Calculator::onClearClicked()
 
 void Calculator::inputPoint()
 {
+    if (m_hasError) {
+        return;
+    }
     if (m_waitingForOperand) {
         m_currentInput = "0.";               // 运算符后直接按点，补出整数部分 0
         m_waitingForOperand = false;
@@ -90,6 +96,9 @@ void Calculator::inputPoint()
 
 void Calculator::inputBackspace()
 {
+    if (m_hasError) {
+        return;
+    }
     if (m_waitingForOperand) {
         return;   // 运算符等待状态下退格没有意义，忽略
     }
@@ -106,6 +115,7 @@ void Calculator::resetAll()
     m_storedValue = 0.0;
     m_pendingOperator.clear();
     m_waitingForOperand = false;
+    m_hasError = false;
     ui->labelHistory->clear();
     refreshDisplay();
 }
@@ -117,6 +127,10 @@ void Calculator::onEqualsClicked()
 
 void Calculator::inputOperator(const QString &op)
 {
+    if (m_hasError) {
+        return;
+    }
+
     const double currentValue = m_currentInput.toDouble();
 
     if (m_waitingForOperand) {
@@ -125,7 +139,9 @@ void Calculator::inputOperator(const QString &op)
     } else {
         if (!m_pendingOperator.isEmpty()) {
             // 已有挂起运算且第二个操作数已输入：先算中间结果，支持连续运算
-            applyOperator(currentValue);
+            if (!applyOperator(currentValue)) {
+                return;   // 触发除零错误，状态已被锁定
+            }
         } else {
             m_storedValue = currentValue;
         }
@@ -138,6 +154,9 @@ void Calculator::inputOperator(const QString &op)
 
 void Calculator::inputEquals()
 {
+    if (m_hasError) {
+        return;
+    }
     if (m_pendingOperator.isEmpty()) {
         return;   // 没有挂起的运算符，忽略
     }
@@ -162,7 +181,10 @@ bool Calculator::applyOperator(double secondOperand)
     } else if (m_pendingOperator == "×") {
         result = m_storedValue * secondOperand;
     } else if (m_pendingOperator == "÷") {
-        // 注意：除数为 0 的情况暂未处理，后续提交修复
+        if (secondOperand == 0.0) {
+            enterErrorState();
+            return false;   // 拦截本次计算，等待按 C 清除后重新开始
+        }
         result = m_storedValue / secondOperand;
     }
 
@@ -170,6 +192,15 @@ bool Calculator::applyOperator(double secondOperand)
     m_currentInput = formatNumber(result);
     refreshDisplay();
     return true;
+}
+
+void Calculator::enterErrorState()
+{
+    m_hasError = true;
+    m_pendingOperator.clear();
+    m_waitingForOperand = true;
+    ui->labelHistory->clear();
+    ui->lineEditDisplay->setText("错误：除数不能为 0");
 }
 
 QString Calculator::formatNumber(double value)

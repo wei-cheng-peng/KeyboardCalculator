@@ -33,6 +33,7 @@ private:
     void inputEquals();             // 执行计算
     void resetAll();                // 全部清除
     bool applyOperator(double secondOperand); // 按挂起的运算符计算，结果写回 m_storedValue
+    void enterErrorState();         // 进入除零错误状态并锁定输入
     void refreshDisplay();          // 用 m_currentInput 刷新显示框
     static QString formatNumber(double value); // 统一数字格式，去掉浮点尾零
 
@@ -43,6 +44,7 @@ private:
     double m_storedValue = 0.0;     // 第一个操作数 / 连续运算的中间结果
     QString m_pendingOperator;      // 待执行的运算符，为空表示没有挂起运算
     bool m_waitingForOperand = false; // 按过运算符后为 true，下一个数字开启新输入
+    bool m_hasError = false;        // 除零错误标志，为 true 时仅响应清除
 };
 
 #endif // CALCULATOR_H
