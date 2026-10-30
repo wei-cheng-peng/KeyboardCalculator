@@ -1,12 +1,18 @@
 #include "calculator.h"
 #include "ui_calculator.h"
 
+#include <cmath>
+
+#include <QHash>
 #include <QKeyEvent>
 #include <QPushButton>
 
 Calculator::Calculator(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Calculator)
+    , m_storedValue(0.0)
+    , m_waitingForOperand(false)
+    , m_hasError(false)
 {
     ui->setupUi(this);
 
@@ -21,12 +27,21 @@ Calculator::Calculator(QWidget *parent)
     connect(ui->btnPoint, &QPushButton::clicked, this, &Calculator::onPointClicked);
     connect(ui->btnBackspace, &QPushButton::clicked, this, &Calculator::onBackspaceClicked);
     connect(ui->btnClear, &QPushButton::clicked, this, &Calculator::onClearClicked);
+    connect(ui->btnClearEntry, &QPushButton::clicked, this, &Calculator::onClearEntryClicked);
+    connect(ui->btnNegate, &QPushButton::clicked, this, &Calculator::onNegateClicked);
+    connect(ui->btnPercent, &QPushButton::clicked, this, &Calculator::onPercentClicked);
 
-    // 运算符按钮统一转调 inputOperator，符号与界面显示保持一致
-    connect(ui->btnAdd, &QPushButton::clicked, this, [this] { inputOperator("+"); });
-    connect(ui->btnSubtract, &QPushButton::clicked, this, [this] { inputOperator("−"); });
-    connect(ui->btnMultiply, &QPushButton::clicked, this, [this] { inputOperator("×"); });
-    connect(ui->btnDivide, &QPushButton::clicked, this, [this] { inputOperator("÷"); });
+    // 单目运算三个按钮共用一个槽
+    connect(ui->btnReciprocal, &QPushButton::clicked, this, &Calculator::onUnaryClicked);
+    connect(ui->btnSquare, &QPushButton::clicked, this, &Calculator::onUnaryClicked);
+    connect(ui->btnSquareRoot, &QPushButton::clicked, this, &Calculator::onUnaryClicked);
+
+    // 四则运算符四个按钮共用一个槽
+    connect(ui->btnAdd, &QPushButton::clicked, this, &Calculator::onOperatorClicked);
+    connect(ui->btnSubtract, &QPushButton::clicked, this, &Calculator::onOperatorClicked);
+    connect(ui->btnMultiply, &QPushButton::clicked, this, &Calculator::onOperatorClicked);
+    connect(ui->btnDivide, &QPushButton::clicked, this, &Calculator::onOperatorClicked);
+
     connect(ui->btnEquals, &QPushButton::clicked, this, &Calculator::onEqualsClicked);
 
     refreshDisplay();
@@ -39,7 +54,7 @@ Calculator::~Calculator()
 
 void Calculator::keyPressEvent(QKeyEvent *event)
 {
-    // 键盘只做“按键 -> 统一处理函数”的映射，不写任何独立计算逻辑，
+    // 键盘只做“按键 -> 统一处理函数”的映射，不写独立计算逻辑，
     // 因此鼠标与键盘天然复用同一套代码，行为保持一致
     switch (event->key()) {
     case Qt::Key_0:
@@ -70,6 +85,9 @@ void Calculator::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Slash:
         inputOperator("÷");
         break;
+    case Qt::Key_Percent:
+        applyPercent();
+        break;
     case Qt::Key_Equal:
     case Qt::Key_Return:
     case Qt::Key_Enter:
@@ -90,13 +108,75 @@ void Calculator::keyPressEvent(QKeyEvent *event)
     event->accept();
 }
 
+// ---------- 槽函数：只负责把信号转成统一调用 ----------
+
 void Calculator::onDigitClicked()
 {
-    // 从发出信号的按钮名 btnDigitX 中解析出数字 X
+    // 从按钮名 btnDigitX 中解析出数字 X
     const QPushButton *button = qobject_cast<QPushButton *>(sender());
     const int digit = button->objectName().mid(8).toInt();
     inputDigit(digit);
 }
+
+void Calculator::onPointClicked()
+{
+    inputPoint();
+}
+
+void Calculator::onOperatorClicked()
+{
+    static const QHash<QString, QString> symbolMap = {
+        {"btnAdd", "+"},
+        {"btnSubtract", "−"},
+        {"btnMultiply", "×"},
+        {"btnDivide", "÷"},
+    };
+    const QPushButton *button = qobject_cast<QPushButton *>(sender());
+    inputOperator(symbolMap.value(button->objectName()));
+}
+
+void Calculator::onUnaryClicked()
+{
+    static const QHash<QString, QString> operationMap = {
+        {"btnReciprocal", "reciprocal"},
+        {"btnSquare", "square"},
+        {"btnSquareRoot", "sqrt"},
+    };
+    const QPushButton *button = qobject_cast<QPushButton *>(sender());
+    applyUnary(operationMap.value(button->objectName()));
+}
+
+void Calculator::onEqualsClicked()
+{
+    inputEquals();
+}
+
+void Calculator::onBackspaceClicked()
+{
+    inputBackspace();
+}
+
+void Calculator::onClearClicked()
+{
+    resetAll();
+}
+
+void Calculator::onClearEntryClicked()
+{
+    clearEntry();
+}
+
+void Calculator::onNegateClicked()
+{
+    negateCurrent();
+}
+
+void Calculator::onPercentClicked()
+{
+    applyPercent();
+}
+
+// ---------- 核心处理逻辑 ----------
 
 void Calculator::inputDigit(int digit)
 {
@@ -114,21 +194,6 @@ void Calculator::inputDigit(int digit)
     refreshDisplay();
 }
 
-void Calculator::onPointClicked()
-{
-    inputPoint();
-}
-
-void Calculator::onBackspaceClicked()
-{
-    inputBackspace();
-}
-
-void Calculator::onClearClicked()
-{
-    resetAll();
-}
-
 void Calculator::inputPoint()
 {
     if (m_hasError) {
@@ -140,12 +205,57 @@ void Calculator::inputPoint()
         refreshDisplay();
         return;
     }
-    // 同一个操作数只允许出现一个小数点，重复点击直接忽略
+    // 同一个操作数只允许一个小数点，重复点击直接忽略
     if (m_currentInput.contains('.')) {
         return;
     }
     m_currentInput += '.';
     refreshDisplay();
+}
+
+void Calculator::inputOperator(const QString &op)
+{
+    if (m_hasError) {
+        return;
+    }
+
+    const double currentValue = m_currentInput.toDouble();
+
+    if (m_waitingForOperand) {
+        // 第二个操作数还没开始输入就换运算符：直接替换，处理连续操作符
+        m_pendingOperator = op;
+    } else {
+        if (!m_pendingOperator.isEmpty()) {
+            // 已有挂起运算且第二个操作数已输入：先算中间结果，支持连续运算
+            if (!applyBinary(currentValue)) {
+                return;   // 触发除零错误，状态已被锁定
+            }
+        } else {
+            m_storedValue = currentValue;
+        }
+        m_pendingOperator = op;
+        m_waitingForOperand = true;
+    }
+
+    ui->labelHistory->setText(formatNumber(m_storedValue) + " " + op);
+}
+
+void Calculator::inputEquals()
+{
+    if (m_hasError) {
+        return;
+    }
+    if (m_pendingOperator.isEmpty()) {
+        return;   // 没有挂起的运算符，忽略
+    }
+
+    const double secondOperand = m_currentInput.toDouble();
+    ui->labelHistory->setText(formatNumber(m_storedValue) + " " + m_pendingOperator + " "
+                              + formatNumber(secondOperand) + " =");
+    applyBinary(secondOperand);
+
+    m_pendingOperator.clear();
+    m_waitingForOperand = true;   // 计算完成：按数字开始新计算，按运算符则用结果继续
 }
 
 void Calculator::inputBackspace()
@@ -174,57 +284,73 @@ void Calculator::resetAll()
     refreshDisplay();
 }
 
-void Calculator::onEqualsClicked()
-{
-    inputEquals();
-}
-
-void Calculator::inputOperator(const QString &op)
+void Calculator::clearEntry()
 {
     if (m_hasError) {
+        resetAll();   // 错误状态下 CE 也可恢复
         return;
     }
+    m_currentInput = "0";
+    m_waitingForOperand = false;
+    refreshDisplay();
+}
 
-    const double currentValue = m_currentInput.toDouble();
-
-    if (m_waitingForOperand) {
-        // 第二个操作数还没开始输入就换运算符：直接替换，处理连续操作符
-        m_pendingOperator = op;
+void Calculator::negateCurrent()
+{
+    if (m_hasError || m_waitingForOperand) {
+        return;
+    }
+    if (m_currentInput == "0") {
+        return;   // 0 取反没有意义
+    }
+    if (m_currentInput.startsWith('-')) {
+        m_currentInput.remove(0, 1);
     } else {
-        if (!m_pendingOperator.isEmpty()) {
-            // 已有挂起运算且第二个操作数已输入：先算中间结果，支持连续运算
-            if (!applyOperator(currentValue)) {
-                return;   // 触发除零错误，状态已被锁定
-            }
-        } else {
-            m_storedValue = currentValue;
-        }
-        m_pendingOperator = op;
-        m_waitingForOperand = true;
+        m_currentInput.prepend('-');
     }
-
-    ui->labelHistory->setText(formatNumber(m_storedValue) + " " + op);
+    refreshDisplay();
 }
 
-void Calculator::inputEquals()
+void Calculator::applyPercent()
 {
-    if (m_hasError) {
+    if (m_hasError || m_waitingForOperand) {
         return;
     }
-    if (m_pendingOperator.isEmpty()) {
-        return;   // 没有挂起的运算符，忽略
-    }
-
-    const double secondOperand = m_currentInput.toDouble();
-    ui->labelHistory->setText(formatNumber(m_storedValue) + " " + m_pendingOperator + " "
-                              + formatNumber(secondOperand) + " =");
-    applyOperator(secondOperand);
-
-    m_pendingOperator.clear();
-    m_waitingForOperand = true;   // 计算完成：按数字开始新计算，按运算符则用结果继续
+    const double result = m_currentInput.toDouble() / 100.0;
+    m_currentInput = formatNumber(result);
+    refreshDisplay();
 }
 
-bool Calculator::applyOperator(double secondOperand)
+void Calculator::applyUnary(const QString &op)
+{
+    if (m_hasError || m_waitingForOperand) {
+        return;
+    }
+
+    const double value = m_currentInput.toDouble();
+    double result = 0.0;
+
+    if (op == "reciprocal") {
+        if (value == 0.0) {
+            enterErrorState("错误：除数不能为 0");
+            return;
+        }
+        result = 1.0 / value;
+    } else if (op == "square") {
+        result = value * value;
+    } else {  // 开平方
+        if (value < 0.0) {
+            enterErrorState("错误：负数不能开平方");
+            return;
+        }
+        result = std::sqrt(value);
+    }
+
+    m_currentInput = formatNumber(result);
+    refreshDisplay();
+}
+
+bool Calculator::applyBinary(double secondOperand)
 {
     double result = 0.0;
 
@@ -236,7 +362,7 @@ bool Calculator::applyOperator(double secondOperand)
         result = m_storedValue * secondOperand;
     } else if (m_pendingOperator == "÷") {
         if (secondOperand == 0.0) {
-            enterErrorState();
+            enterErrorState("错误：除数不能为 0");
             return false;   // 拦截本次计算，等待按 C 清除后重新开始
         }
         result = m_storedValue / secondOperand;
@@ -248,13 +374,13 @@ bool Calculator::applyOperator(double secondOperand)
     return true;
 }
 
-void Calculator::enterErrorState()
+void Calculator::enterErrorState(const QString &message)
 {
     m_hasError = true;
     m_pendingOperator.clear();
     m_waitingForOperand = true;
     ui->labelHistory->clear();
-    ui->lineEditDisplay->setText("错误：除数不能为 0");
+    ui->lineEditDisplay->setText(message);
 }
 
 QString Calculator::formatNumber(double value)
