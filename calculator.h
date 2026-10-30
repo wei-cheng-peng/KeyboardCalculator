@@ -1,6 +1,7 @@
 #ifndef CALCULATOR_H
 #define CALCULATOR_H
 
+#include <QResizeEvent>
 #include <QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -21,6 +22,8 @@ public:
 protected:
     // 重写键盘事件：把物理按键映射到与鼠标按钮相同的处理函数
     void keyPressEvent(QKeyEvent *event) override;
+    // 窗口缩放时重新适配显示字号
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void onDigitClicked();           // 数字按钮 0-9

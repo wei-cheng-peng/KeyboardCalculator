@@ -3,9 +3,11 @@
 
 #include <cmath>
 
+#include <QFontMetrics>
 #include <QHash>
 #include <QKeyEvent>
 #include <QPushButton>
+#include <QResizeEvent>
 
 Calculator::Calculator(QWidget *parent)
     : QWidget(parent)
@@ -182,6 +184,10 @@ void Calculator::inputDigit(int digit)
 {
     if (m_hasError) {
         return;   // 错误状态下锁定输入，只能按 C 清除
+    }
+    // 单个操作数最多 16 位，防止无限输入把字号压得太小
+    if (!m_waitingForOperand && m_currentInput.length() >= 16) {
+        return;
     }
     if (m_waitingForOperand) {
         m_currentInput = QString::number(digit);   // 运算符后输入新数字，覆盖旧显示
@@ -391,5 +397,30 @@ QString Calculator::formatNumber(double value)
 
 void Calculator::refreshDisplay()
 {
-    ui->lineEditDisplay->setText(m_currentInput);
+    QLineEdit *display = ui->lineEditDisplay;
+    display->setText(m_currentInput);
+
+    // 根据数字长度自适应字号：文字超宽就逐步缩小，保证完整显示在框内
+    int widgetWidth = display->width();
+    if (widgetWidth <= 1) {
+        widgetWidth = 320;   // 构造期布局尚未确定，用兜底宽度
+    }
+    const int available = widgetWidth - 32;   // 预留 QSS 左右各 12px 内边距
+
+    QFont font = display->font();
+    int pointSize = 36;
+    font.setPointSize(pointSize);
+    QFontMetrics metrics(font);
+    while (metrics.horizontalAdvance(m_currentInput) > available && pointSize > 12) {
+        --pointSize;
+        font.setPointSize(pointSize);
+        metrics = QFontMetrics(font);
+    }
+    display->setFont(font);
+}
+
+void Calculator::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    refreshDisplay();   // 窗口缩放后重新计算字号
 }

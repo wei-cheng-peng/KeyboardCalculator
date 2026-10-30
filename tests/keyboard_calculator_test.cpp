@@ -349,6 +349,22 @@ private slots:
         clickButton(zero, "btnReciprocal");
         QCOMPARE(displayText(zero), QString("错误：除数不能为 0"));
     }
+
+    // 长数字完整显示，字号自动缩小以适应显示框
+    void testLongNumberFitsDisplay()
+    {
+        Calculator window;
+        window.resize(400, 580);
+        window.show();
+
+        QLineEdit *display = window.findChild<QLineEdit *>("lineEditDisplay");
+        const int initialSize = display->font().pointSize();
+        for (int i = 0; i < 16; ++i) {
+            QTest::keyClick(&window, Qt::Key_1 + (i % 9));
+        }
+        QCOMPARE(display->text().length(), 16);
+        QVERIFY2(display->font().pointSize() < initialSize, "长数字应缩小字号");
+    }
 };
 
 QTEST_MAIN(KeyboardCalculatorTest)
