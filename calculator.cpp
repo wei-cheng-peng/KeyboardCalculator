@@ -483,8 +483,8 @@ void Calculator::enterErrorState(const QString &message)
     m_waitingForOperand = true;
     m_resultShown = false;
     m_expression.clear();
-    ui->labelHistory->clear();
-    ui->lineEditDisplay->setText(message);
+    m_currentInput = message;
+    refreshDisplay();
 }
 
 QString Calculator::formatNumber(double value)

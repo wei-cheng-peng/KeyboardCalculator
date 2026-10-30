@@ -371,6 +371,8 @@ private slots:
         clickButton(negative, "btnNegate");
         clickButton(negative, "btnSquareRoot");
         QCOMPARE(displayText(negative), QString("错误：负数不能开平方"));
+        QLineEdit *errorDisplay = negative.findChild<QLineEdit *>("lineEditDisplay");
+        QVERIFY(errorDisplay->font().pointSize() < 36);
     }
 
     // 倒数，以及 0 倒数进入错误状态
