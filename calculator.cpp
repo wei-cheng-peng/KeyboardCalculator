@@ -317,7 +317,20 @@ void Calculator::inputBackspace()
     }
 
     if (m_waitingForOperand) {
-        return;   // 运算符等待状态下退格无意义，忽略
+        // 刚按完运算符，退格删掉最后一个运算符，数字退回为当前输入
+        if (!m_operators.isEmpty()) {
+            m_operators.removeLast();
+            if (!m_operands.isEmpty()) {
+                const double confirmed = m_operands.last();
+                m_operands.removeLast();
+                // 表达式先移除数字串，再删末尾运算符
+                m_expression.chop(formatNumber(confirmed).length());
+            }
+            m_expression.chop(1);
+            m_waitingForOperand = false;
+        }
+        refreshDisplay();
+        return;
     }
 
     m_currentInput.chop(1);

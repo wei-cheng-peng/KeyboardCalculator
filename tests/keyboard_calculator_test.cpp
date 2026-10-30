@@ -224,6 +224,33 @@ private slots:
     }
 
     // 除数为零：进入错误状态，输入被锁定，清除后恢复正常
+    // 等待运算符状态下退格：删掉最后一个运算符，数字退回当前输入
+    void testBackspaceRemovesOperator()
+    {
+        Calculator window;
+        window.show();
+
+        // 8.5 × 9 +
+        clickButton(window, "btnDigit8");
+        clickButton(window, "btnPoint");
+        clickButton(window, "btnDigit5");
+        clickButton(window, "btnMultiply");
+        clickButton(window, "btnDigit9");
+        clickButton(window, "btnAdd");
+        QCOMPARE(historyText(window), QString("8.5×9+"));
+
+        // 退格删掉加号，回到 8.5×9
+        clickButton(window, "btnBackspace");
+        QCOMPARE(historyText(window), QString("8.5×9"));
+        QVERIFY(displayText(window).isEmpty());
+
+        // 再补 +1 等号，结果正确
+        clickButton(window, "btnAdd");
+        clickButton(window, "btnDigit1");
+        clickButton(window, "btnEquals");
+        QCOMPARE(displayText(window), QString("77.5"));
+    }
+
     void testDivideByZeroAndRecover()
     {
         Calculator window;
