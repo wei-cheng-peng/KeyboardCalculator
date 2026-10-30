@@ -170,8 +170,8 @@ private slots:
         QCOMPARE(displayText(window), QString("2"));
     }
 
-    // 连续运算：中间结果参与下一次运算
-    void testChainedCalculation()
+    // 运算符优先级：先乘除后加减，2 + 3 × 4 = 14
+    void testOperatorPrecedence()
     {
         Calculator window;
         window.show();
@@ -182,7 +182,44 @@ private slots:
         clickButton(window, "btnMultiply");
         clickButton(window, "btnDigit4");
         clickButton(window, "btnEquals");
-        QCOMPARE(displayText(window), QString("20"));
+        QCOMPARE(displayText(window), QString("14"));
+    }
+
+    // 表达式累积：等号前历史区显示完整式子，等号后才出结果
+    void testExpressionAccumulation()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit5");
+        clickButton(window, "btnAdd");
+        clickButton(window, "btnDigit5");
+        clickButton(window, "btnAdd");
+        clickButton(window, "btnDigit9");
+        QCOMPARE(historyText(window), QString("5+5+9"));
+
+        clickButton(window, "btnEquals");
+        QCOMPARE(displayText(window), QString("19"));
+    }
+
+    // 结果态退格：逐位删除结果数字
+    void testBackspaceOnResult()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit8");
+        clickButton(window, "btnDigit9");
+        clickButton(window, "btnMultiply");
+        clickButton(window, "btnDigit6");
+        clickButton(window, "btnEquals");
+        QCOMPARE(displayText(window), QString("534"));
+
+        clickButton(window, "btnBackspace");
+        QCOMPARE(displayText(window), QString("53"));
+
+        clickButton(window, "btnBackspace");
+        QCOMPARE(displayText(window), QString("5"));
     }
 
     // 除数为零：进入错误状态，输入被锁定，清除后恢复正常

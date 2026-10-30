@@ -12,8 +12,8 @@
 Calculator::Calculator(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Calculator)
-    , m_storedValue(0.0)
     , m_waitingForOperand(false)
+    , m_resultShown(false)
     , m_hasError(false)
 {
     ui->setupUi(this);
@@ -185,16 +185,22 @@ void Calculator::inputDigit(int digit)
     if (m_hasError) {
         return;   // 错误状态下锁定输入，只能按 C 清除
     }
-    // 单个操作数最多 16 位，防止无限输入把字号压得太小
-    if (!m_waitingForOperand && m_currentInput.length() >= 16) {
+    if (m_resultShown) {
+        // 结果态按数字：开始全新计算
+        startNewExpression();
+        m_currentInput = QString::number(digit);
+        refreshDisplay();
         return;
     }
     if (m_waitingForOperand) {
-        m_currentInput = QString::number(digit);   // 运算符后输入新数字，覆盖旧显示
+        m_currentInput = QString::number(digit);   // 运算符后输入新数字
         m_waitingForOperand = false;
     } else if (m_currentInput == "0") {
         m_currentInput = QString::number(digit);   // 去掉前导 0
     } else {
+        if (m_currentInput.length() >= 16) {
+            return;   // 单个操作数最多 16 位
+        }
         m_currentInput += QString::number(digit);  // 正常追加
     }
     refreshDisplay();
@@ -203,6 +209,12 @@ void Calculator::inputDigit(int digit)
 void Calculator::inputPoint()
 {
     if (m_hasError) {
+        return;
+    }
+    if (m_resultShown) {
+        startNewExpression();
+        m_currentInput = "0.";
+        refreshDisplay();
         return;
     }
     if (m_waitingForOperand) {
@@ -225,25 +237,35 @@ void Calculator::inputOperator(const QString &op)
         return;
     }
 
-    const double currentValue = m_currentInput.toDouble();
+    if (m_resultShown) {
+        // 用当前结果作为新表达式的第一个操作数，再挂起新运算符
+        m_operands.clear();
+        m_operators.clear();
+        m_operands.append(m_currentInput.toDouble());
+        m_operators.append(op);
+        m_expression = formatNumber(m_currentInput.toDouble()) + op;
+        m_resultShown = false;
+        m_waitingForOperand = true;
+        ui->labelHistory->setText(m_expression);
+        return;
+    }
 
     if (m_waitingForOperand) {
-        // 第二个操作数还没开始输入就换运算符：直接替换，处理连续操作符
-        m_pendingOperator = op;
+        // 第二个操作数还没输入就换运算符：替换最后一个运算符
+        m_operators.last() = op;
+        m_expression.chop(1);
+        m_expression += op;
     } else {
-        if (!m_pendingOperator.isEmpty()) {
-            // 已有挂起运算且第二个操作数已输入：先算中间结果，支持连续运算
-            if (!applyBinary(currentValue)) {
-                return;   // 触发除零错误，状态已被锁定
-            }
-        } else {
-            m_storedValue = currentValue;
-        }
-        m_pendingOperator = op;
+        // 确认当前数字进入表达式，只累积不计算
+        const double value = m_currentInput.toDouble();
+        m_operands.append(value);
+        m_expression += formatNumber(value);
+        m_operators.append(op);
+        m_expression += op;
         m_waitingForOperand = true;
     }
 
-    ui->labelHistory->setText(formatNumber(m_storedValue) + " " + op);
+    ui->labelHistory->setText(m_expression);
 }
 
 void Calculator::inputEquals()
@@ -251,17 +273,26 @@ void Calculator::inputEquals()
     if (m_hasError) {
         return;
     }
-    if (m_pendingOperator.isEmpty()) {
-        return;   // 没有挂起的运算符，忽略
+    if (m_operators.isEmpty()) {
+        return;   // 没有运算符，忽略
     }
 
-    const double secondOperand = m_currentInput.toDouble();
-    ui->labelHistory->setText(formatNumber(m_storedValue) + " " + m_pendingOperator + " "
-                              + formatNumber(secondOperand) + " =");
-    applyBinary(secondOperand);
+    // 补上最后一个操作数
+    if (!m_waitingForOperand) {
+        m_operands.append(m_currentInput.toDouble());
+        m_expression += formatNumber(m_currentInput.toDouble());
+    }
 
-    m_pendingOperator.clear();
-    m_waitingForOperand = true;   // 计算完成：按数字开始新计算，按运算符则用结果继续
+    double result = 0.0;
+    if (!evaluateExpression(result)) {
+        return;   // 触发除零等错误，状态已锁定
+    }
+
+    m_currentInput = formatNumber(result);
+    m_resultShown = true;
+    m_waitingForOperand = false;
+    ui->labelHistory->setText(m_expression + "=");
+    refreshDisplay();
 }
 
 void Calculator::inputBackspace()
@@ -269,9 +300,26 @@ void Calculator::inputBackspace()
     if (m_hasError) {
         return;
     }
-    if (m_waitingForOperand) {
-        return;   // 运算符等待状态下退格没有意义，忽略
+
+    if (m_resultShown) {
+        // 结果态：把结果当成普通数字逐位删除
+        m_resultShown = false;
+        m_expression.clear();
+        m_operands.clear();
+        m_operators.clear();
+        ui->labelHistory->clear();
+        m_currentInput.chop(1);
+        if (m_currentInput.isEmpty()) {
+            m_currentInput = "0";
+        }
+        refreshDisplay();
+        return;
     }
+
+    if (m_waitingForOperand) {
+        return;   // 运算符等待状态下退格无意义，忽略
+    }
+
     m_currentInput.chop(1);
     if (m_currentInput.isEmpty()) {
         m_currentInput = "0";   // 删空后回到初始的 0
@@ -281,19 +329,26 @@ void Calculator::inputBackspace()
 
 void Calculator::resetAll()
 {
-    m_currentInput = "0";
-    m_storedValue = 0.0;
-    m_pendingOperator.clear();
-    m_waitingForOperand = false;
     m_hasError = false;
-    ui->labelHistory->clear();
+    startNewExpression();
     refreshDisplay();
+}
+
+void Calculator::startNewExpression()
+{
+    m_currentInput = "0";
+    m_expression.clear();
+    m_operands.clear();
+    m_operators.clear();
+    m_waitingForOperand = false;
+    m_resultShown = false;
+    ui->labelHistory->clear();
 }
 
 void Calculator::clearEntry()
 {
-    if (m_hasError) {
-        resetAll();   // 错误状态下 CE 也可恢复
+    if (m_hasError || m_resultShown) {
+        resetAll();
         return;
     }
     m_currentInput = "0";
@@ -305,6 +360,14 @@ void Calculator::negateCurrent()
 {
     if (m_hasError || m_waitingForOperand) {
         return;
+    }
+    if (m_resultShown) {
+        // 在结果上取反，转为普通编辑并清掉旧表达式
+        m_resultShown = false;
+        m_expression.clear();
+        m_operands.clear();
+        m_operators.clear();
+        ui->labelHistory->clear();
     }
     if (m_currentInput == "0") {
         return;   // 0 取反没有意义
@@ -322,6 +385,13 @@ void Calculator::applyPercent()
     if (m_hasError || m_waitingForOperand) {
         return;
     }
+    if (m_resultShown) {
+        m_resultShown = false;
+        m_expression.clear();
+        m_operands.clear();
+        m_operators.clear();
+        ui->labelHistory->clear();
+    }
     const double result = m_currentInput.toDouble() / 100.0;
     m_currentInput = formatNumber(result);
     refreshDisplay();
@@ -331,6 +401,13 @@ void Calculator::applyUnary(const QString &op)
 {
     if (m_hasError || m_waitingForOperand) {
         return;
+    }
+    if (m_resultShown) {
+        m_resultShown = false;
+        m_expression.clear();
+        m_operands.clear();
+        m_operators.clear();
+        ui->labelHistory->clear();
     }
 
     const double value = m_currentInput.toDouble();
@@ -356,35 +433,56 @@ void Calculator::applyUnary(const QString &op)
     refreshDisplay();
 }
 
-bool Calculator::applyBinary(double secondOperand)
+bool Calculator::evaluateExpression(double &result)
 {
-    double result = 0.0;
+    QList<double> nums = m_operands;
+    QStringList ops = m_operators;
 
-    if (m_pendingOperator == "+") {
-        result = m_storedValue + secondOperand;
-    } else if (m_pendingOperator == "−") {
-        result = m_storedValue - secondOperand;
-    } else if (m_pendingOperator == "×") {
-        result = m_storedValue * secondOperand;
-    } else if (m_pendingOperator == "÷") {
-        if (secondOperand == 0.0) {
-            enterErrorState("错误：除数不能为 0");
-            return false;   // 拦截本次计算，等待按 C 清除后重新开始
+    // 第一遍：从左到右处理所有乘除，保证先乘除后加减
+    int i = 0;
+    while (i < ops.size()) {
+        if (ops[i] == "×" || ops[i] == "÷") {
+            const double left = nums[i];
+            const double right = nums[i + 1];
+            double value = 0.0;
+            if (ops[i] == "×") {
+                value = left * right;
+            } else {
+                if (right == 0.0) {
+                    enterErrorState("错误：除数不能为 0");
+                    return false;
+                }
+                value = left / right;
+            }
+            nums[i] = value;
+            nums.removeAt(i + 1);
+            ops.removeAt(i);   // 不递增 i，继续检查同一位置
+        } else {
+            ++i;
         }
-        result = m_storedValue / secondOperand;
     }
 
-    m_storedValue = result;
-    m_currentInput = formatNumber(result);
-    refreshDisplay();
+    // 第二遍：从左到右处理加减
+    double value = nums[0];
+    for (int j = 0; j < ops.size(); ++j) {
+        if (ops[j] == "+") {
+            value += nums[j + 1];
+        } else {
+            value -= nums[j + 1];
+        }
+    }
+
+    result = value;
     return true;
 }
 
 void Calculator::enterErrorState(const QString &message)
 {
     m_hasError = true;
-    m_pendingOperator.clear();
+    m_operators.clear();
     m_waitingForOperand = true;
+    m_resultShown = false;
+    m_expression.clear();
     ui->labelHistory->clear();
     ui->lineEditDisplay->setText(message);
 }
@@ -417,6 +515,17 @@ void Calculator::refreshDisplay()
         metrics = QFontMetrics(font);
     }
     display->setFont(font);
+
+    // 同步历史表达式：当前数字实时追加，等号后补“=”
+    if (m_hasError) {
+        ui->labelHistory->clear();
+    } else if (m_resultShown) {
+        ui->labelHistory->setText(m_expression + "=");
+    } else if (m_waitingForOperand) {
+        ui->labelHistory->setText(m_expression);
+    } else if (!m_expression.isEmpty()) {
+        ui->labelHistory->setText(m_expression + m_currentInput);
+    }
 }
 
 void Calculator::resizeEvent(QResizeEvent *event)

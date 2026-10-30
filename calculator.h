@@ -1,7 +1,10 @@
 #ifndef CALCULATOR_H
 #define CALCULATOR_H
 
+#include <QList>
 #include <QResizeEvent>
+#include <QString>
+#include <QStringList>
 #include <QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -50,18 +53,21 @@ private:
     void applyPercent();
     void applyUnary(const QString &op);
 
-    bool applyBinary(double secondOperand);                 // 四则运算，结果写回 m_storedValue
-    void enterErrorState(const QString &message);           // 进入错误状态并锁定输入
+    bool evaluateExpression(double &result);              // 对完整表达式求值，先乘除后加减
+    void enterErrorState(const QString &message);         // 进入错误状态并锁定输入
+    void startNewExpression();                            // 清空表达式，准备重新开始
     void refreshDisplay();
     static QString formatNumber(double value);
 
     Ui::Calculator *ui;
 
-    // —— 计算状态机 ——
-    QString m_currentInput;         // 当前操作数字符串，显示与输入的数据源
-    double m_storedValue;           // 第一个操作数 / 连续运算的中间结果
-    QString m_pendingOperator;      // 待执行的运算符，为空表示没有挂起运算
+    // —— 表达式状态 ——
+    QString m_currentInput;         // 当前正在输入的数字字符串，显示框数据源
+    QString m_expression;           // 完整表达式字符串，历史区显示，如 5+5+9
+    QList<double> m_operands;       // 已确认的操作数
+    QStringList m_operators;        // 已确认的运算符，数量比操作数少 1
     bool m_waitingForOperand;       // 按过运算符后为 true，下一个数字开启新输入
+    bool m_resultShown;             // 当前显示的是等号结果
     bool m_hasError;                // 错误标志，为 true 时仅响应清除
 };
 
