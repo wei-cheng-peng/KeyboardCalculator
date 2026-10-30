@@ -10,7 +10,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
 
 qt_add_executable(KeyboardCalculator
     main.cpp
@@ -26,3 +26,7 @@ if(MSVC)
 endif()
 
 target_link_libraries(KeyboardCalculator PRIVATE Qt6::Widgets)
+
+# 单元测试
+enable_testing()
+add_subdirectory(tests)

@@ -48,6 +48,17 @@ cmake -S . -B build -G Ninja \
 cmake --build build
 ```
 
+## 运行单元测试
+
+项目使用 Qt Test 框架，测试代码位于 `tests/`，使用 offscreen 平台无头运行：
+
+```bash
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+当前共 13 个测试用例，覆盖数字输入、小数点、退格清除、四则运算、连续运算、除零恢复、键盘输入与混合输入。
+
 ## 键盘映射
 
 | 键盘按键 | 功能 |
