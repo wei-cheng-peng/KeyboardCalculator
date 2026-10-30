@@ -1,5 +1,168 @@
-/* 初始朴素版本：功能刚跑通，仅保证显示框可读，
-   按钮与窗口均使用系统默认外观，样式美化在后续提交中完成 */
+/* ============================================================
+   计算器样式表（优化版）
+   设计参考 Windows 11 计算器的浅色扁平风格：
+   整体浅灰底、白色卡片式显示框、圆角方形按钮，
+   数字键 / 功能键 / 运算符 / 等号用不同底色区分层级，
+   并为每个按钮提供 hover 与 pressed 交互反馈。
+   ============================================================ */
+
+/* 整体窗口背景 */
+QWidget#Calculator {
+    background-color: #f3f3f3;
+}
+
+/* 历史表达式：小号灰字，右对齐 */
+QLabel#labelHistory {
+    color: #8a8a8a;
+    font-size: 14px;
+    min-height: 22px;
+    padding-right: 8px;
+}
+
+/* 主显示框：白色卡片，圆角，大号深色字 */
 QLineEdit#lineEditDisplay {
-    color: #000000;
+    background-color: #ffffff;
+    color: #1b1b1b;
+    font-size: 36px;
+    border: 1px solid #e4e4e4;
+    border-radius: 8px;
+    padding: 6px 12px;
+    selection-background-color: #cfe3f7;
+}
+
+/* 所有按钮的基础样式：圆角方形、无边框、统一字体 */
+QPushButton {
+    background-color: #fafafa;
+    color: #1b1b1b;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    font-size: 18px;
+    padding: 4px;
+}
+QPushButton:hover {
+    background-color: #ececec;
+    border-color: #d8d8d8;
+}
+QPushButton:pressed {
+    background-color: #cfcfcf;
+}
+
+/* 数字键：白底，字号略大，突出输入主体 */
+QPushButton#btnDigit0,
+QPushButton#btnDigit1,
+QPushButton#btnDigit2,
+QPushButton#btnDigit3,
+QPushButton#btnDigit4,
+QPushButton#btnDigit5,
+QPushButton#btnDigit6,
+QPushButton#btnDigit7,
+QPushButton#btnDigit8,
+QPushButton#btnDigit9,
+QPushButton#btnPoint {
+    background-color: #ffffff;
+    font-size: 19px;
+}
+QPushButton#btnDigit0:hover,
+QPushButton#btnDigit1:hover,
+QPushButton#btnDigit2:hover,
+QPushButton#btnDigit3:hover,
+QPushButton#btnDigit4:hover,
+QPushButton#btnDigit5:hover,
+QPushButton#btnDigit6:hover,
+QPushButton#btnDigit7:hover,
+QPushButton#btnDigit8:hover,
+QPushButton#btnDigit9:hover,
+QPushButton#btnPoint:hover {
+    background-color: #f0f5fb;
+}
+QPushButton#btnDigit0:pressed,
+QPushButton#btnDigit1:pressed,
+QPushButton#btnDigit2:pressed,
+QPushButton#btnDigit3:pressed,
+QPushButton#btnDigit4:pressed,
+QPushButton#btnDigit5:pressed,
+QPushButton#btnDigit6:pressed,
+QPushButton#btnDigit7:pressed,
+QPushButton#btnDigit8:pressed,
+QPushButton#btnDigit9:pressed,
+QPushButton#btnPoint:pressed {
+    background-color: #d6e4f2;
+}
+
+/* 顶部功能键与单目运算键：浅灰底、字号略小，弱化层级 */
+QPushButton#btnPercent,
+QPushButton#btnClearEntry,
+QPushButton#btnClear,
+QPushButton#btnBackspace,
+QPushButton#btnReciprocal,
+QPushButton#btnSquare,
+QPushButton#btnSquareRoot,
+QPushButton#btnNegate {
+    background-color: #f1f1f1;
+    color: #3a3a3a;
+    font-size: 16px;
+}
+QPushButton#btnPercent:hover,
+QPushButton#btnClearEntry:hover,
+QPushButton#btnClear:hover,
+QPushButton#btnBackspace:hover,
+QPushButton#btnReciprocal:hover,
+QPushButton#btnSquare:hover,
+QPushButton#btnSquareRoot:hover,
+QPushButton#btnNegate:hover {
+    background-color: #e2e2e2;
+}
+QPushButton#btnPercent:pressed,
+QPushButton#btnClearEntry:pressed,
+QPushButton#btnClear:pressed,
+QPushButton#btnBackspace:pressed,
+QPushButton#btnReciprocal:pressed,
+QPushButton#btnSquare:pressed,
+QPushButton#btnSquareRoot:pressed,
+QPushButton#btnNegate:pressed {
+    background-color: #c8c8c8;
+}
+
+/* 清除键用淡红色提示，降低误操作后的视觉负担 */
+QPushButton#btnClear,
+QPushButton#btnClearEntry {
+    color: #b04a43;
+}
+
+/* 四则运算符：浅蓝灰底，与数字键区分 */
+QPushButton#btnAdd,
+QPushButton#btnSubtract,
+QPushButton#btnMultiply,
+QPushButton#btnDivide {
+    background-color: #e8f0f9;
+    color: #1f5f9e;
+    font-size: 20px;
+    border-color: #d4e2f1;
+}
+QPushButton#btnAdd:hover,
+QPushButton#btnSubtract:hover,
+QPushButton#btnMultiply:hover,
+QPushButton#btnDivide:hover {
+    background-color: #d6e6f6;
+}
+QPushButton#btnAdd:pressed,
+QPushButton#btnSubtract:pressed,
+QPushButton#btnMultiply:pressed,
+QPushButton#btnDivide:pressed {
+    background-color: #b9d4ee;
+}
+
+/* 等号：蓝色强调，白字，作为视觉落点（参考手机计算器） */
+QPushButton#btnEquals {
+    background-color: #2b7cd3;
+    color: #ffffff;
+    font-size: 21px;
+    border: 1px solid #256cb8;
+    border-radius: 6px;
+}
+QPushButton#btnEquals:hover {
+    background-color: #3a89dd;
+}
+QPushButton#btnEquals:pressed {
+    background-color: #1f66b3;
 }

@@ -260,6 +260,95 @@ private slots:
         QTest::keyClick(&window, Qt::Key_Enter);
         QCOMPARE(displayText(window), QString("10"));
     }
+
+    // CE 只清除当前输入，不影响已挂起的运算状态
+    void testClearEntry()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit1");
+        clickButton(window, "btnDigit2");
+        clickButton(window, "btnClearEntry");
+        QCOMPARE(displayText(window), QString("0"));
+
+        clickButton(window, "btnDigit3");
+        clickButton(window, "btnAdd");
+        clickButton(window, "btnDigit4");
+        clickButton(window, "btnEquals");
+        QCOMPARE(displayText(window), QString("7"));
+    }
+
+    // 正负号切换，连续两次恢复原值
+    void testNegate()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit5");
+        clickButton(window, "btnNegate");
+        QCOMPARE(displayText(window), QString("-5"));
+
+        clickButton(window, "btnNegate");
+        QCOMPARE(displayText(window), QString("5"));
+    }
+
+    // 百分比：当前值除以 100
+    void testPercent()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit5");
+        clickButton(window, "btnDigit0");
+        clickButton(window, "btnPercent");
+        QCOMPARE(displayText(window), QString("0.5"));
+    }
+
+    // 平方
+    void testSquare()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit5");
+        clickButton(window, "btnSquare");
+        QCOMPARE(displayText(window), QString("25"));
+    }
+
+    // 开平方，以及负数开平方进入错误状态
+    void testSquareRoot()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit9");
+        clickButton(window, "btnSquareRoot");
+        QCOMPARE(displayText(window), QString("3"));
+
+        Calculator negative;
+        negative.show();
+        clickButton(negative, "btnDigit3");
+        clickButton(negative, "btnNegate");
+        clickButton(negative, "btnSquareRoot");
+        QCOMPARE(displayText(negative), QString("错误：负数不能开平方"));
+    }
+
+    // 倒数，以及 0 倒数进入错误状态
+    void testReciprocal()
+    {
+        Calculator window;
+        window.show();
+
+        clickButton(window, "btnDigit4");
+        clickButton(window, "btnReciprocal");
+        QCOMPARE(displayText(window), QString("0.25"));
+
+        Calculator zero;
+        zero.show();
+        clickButton(zero, "btnReciprocal");
+        QCOMPARE(displayText(zero), QString("错误：除数不能为 0"));
+    }
 };
 
 QTEST_MAIN(KeyboardCalculatorTest)
