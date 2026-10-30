@@ -5,9 +5,10 @@ project(KeyboardCalculator VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 自动处理 Qt 的元对象、.ui 文件
+# 自动处理 Qt 的元对象、.ui 文件与资源文件
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
@@ -16,6 +17,7 @@ qt_add_executable(KeyboardCalculator
     calculator.cpp
     calculator.h
     calculator.ui
+    resources.qrc
 )
 
 # MSVC 下强制源码按 UTF-8 解析，避免中文乱码

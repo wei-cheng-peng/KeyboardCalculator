@@ -1,0 +1,65 @@
+/* 计算器整体深色背景 */
+QWidget#Calculator {
+    background-color: #1c1c1e;
+}
+
+/* 历史表达式：小号灰字 */
+QLabel#labelHistory {
+    color: #8e8e93;
+    font-size: 16px;
+    min-height: 24px;
+    padding-right: 4px;
+}
+
+/* 主显示框：深色圆角卡片，白色大字 */
+QLineEdit#lineEditDisplay {
+    background-color: #2c2c2e;
+    color: #ffffff;
+    font-size: 40px;
+    border: none;
+    border-radius: 10px;
+    padding: 0 12px;
+}
+
+/* 数字键默认样式：深灰圆角 */
+QPushButton {
+    border: none;
+    border-radius: 26px;
+    font-size: 22px;
+    color: #ffffff;
+    background-color: #3a3a3c;
+}
+
+QPushButton:pressed {
+    background-color: #5a5a5c;
+}
+
+/* 清除、退格键：浅灰深字 */
+QPushButton#btnClear,
+QPushButton#btnBackspace {
+    background-color: #a5a5a8;
+    color: #1c1c1e;
+}
+
+QPushButton#btnClear:pressed,
+QPushButton#btnBackspace:pressed {
+    background-color: #c0c0c3;
+}
+
+/* 运算符与等号：橙色高亮 */
+QPushButton#btnAdd,
+QPushButton#btnSubtract,
+QPushButton#btnMultiply,
+QPushButton#btnDivide,
+QPushButton#btnEquals {
+    background-color: #ff9f0a;
+    font-size: 26px;
+}
+
+QPushButton#btnAdd:pressed,
+QPushButton#btnSubtract:pressed,
+QPushButton#btnMultiply:pressed,
+QPushButton#btnDivide:pressed,
+QPushButton#btnEquals:pressed {
+    background-color: #ffb340;
+}
