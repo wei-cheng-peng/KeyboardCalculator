@@ -41,13 +41,13 @@ private slots:
         clickButton(window, "btnDigit1");
         clickButton(window, "btnDigit2");
         clickButton(window, "btnDigit3");
-        QCOMPARE(displayText(window), QString("123"));
+        QCOMPARE(historyText(window), QString("123"));
 
         Calculator another;
         another.show();
         clickButton(another, "btnDigit0");
         clickButton(another, "btnDigit5");
-        QCOMPARE(displayText(another), QString("5"));
+        QCOMPARE(historyText(another), QString("5"));
     }
 
     // 同一操作数重复小数点只保留一个
@@ -60,7 +60,7 @@ private slots:
         clickButton(window, "btnPoint");
         clickButton(window, "btnPoint");
         clickButton(window, "btnDigit2");
-        QCOMPARE(displayText(window), QString("1.2"));
+        QCOMPARE(historyText(window), QString("1.2"));
     }
 
     // 运算符后直接按小数点，自动补整数部分 0
@@ -87,10 +87,10 @@ private slots:
         clickButton(window, "btnDigit2");
         clickButton(window, "btnDigit3");
         clickButton(window, "btnBackspace");
-        QCOMPARE(displayText(window), QString("12"));
+        QCOMPARE(historyText(window), QString("12"));
         clickButton(window, "btnBackspace");
         clickButton(window, "btnBackspace");
-        QCOMPARE(displayText(window), QString("0"));
+        QVERIFY(historyText(window).isEmpty());
     }
 
     // 清除后显示与历史全部复位
@@ -104,7 +104,7 @@ private slots:
         clickButton(window, "btnAdd");
         clickButton(window, "btnDigit3");
         clickButton(window, "btnClear");
-        QCOMPARE(displayText(window), QString("0"));
+        QVERIFY(displayText(window).isEmpty());
         QVERIFY(historyText(window).isEmpty());
     }
 
@@ -216,10 +216,11 @@ private slots:
         QCOMPARE(displayText(window), QString("534"));
 
         clickButton(window, "btnBackspace");
-        QCOMPARE(displayText(window), QString("53"));
+        QVERIFY(displayText(window).isEmpty());
+        QCOMPARE(historyText(window), QString("53"));
 
         clickButton(window, "btnBackspace");
-        QCOMPARE(displayText(window), QString("5"));
+        QCOMPARE(historyText(window), QString("5"));
     }
 
     // 除数为零：进入错误状态，输入被锁定，清除后恢复正常
@@ -238,7 +239,7 @@ private slots:
         QCOMPARE(displayText(window), QString("错误：除数不能为 0"));
 
         clickButton(window, "btnClear");
-        QCOMPARE(displayText(window), QString("0"));
+        QVERIFY(displayText(window).isEmpty());
 
         clickButton(window, "btnDigit2");
         clickButton(window, "btnAdd");
@@ -282,7 +283,7 @@ private slots:
         QTest::keyClick(&window, Qt::Key_2);
         QTest::keyClick(&window, Qt::Key_3);
         QTest::keyClick(&window, Qt::Key_Backspace);
-        QCOMPARE(displayText(window), QString("12"));
+        QCOMPARE(historyText(window), QString("12"));
     }
 
     // 鼠标与键盘混合输入
@@ -307,7 +308,8 @@ private slots:
         clickButton(window, "btnDigit1");
         clickButton(window, "btnDigit2");
         clickButton(window, "btnClearEntry");
-        QCOMPARE(displayText(window), QString("0"));
+        QVERIFY(historyText(window).isEmpty());
+        QVERIFY(displayText(window).isEmpty());
 
         clickButton(window, "btnDigit3");
         clickButton(window, "btnAdd");
@@ -324,10 +326,10 @@ private slots:
 
         clickButton(window, "btnDigit5");
         clickButton(window, "btnNegate");
-        QCOMPARE(displayText(window), QString("-5"));
+        QCOMPARE(historyText(window), QString("-5"));
 
         clickButton(window, "btnNegate");
-        QCOMPARE(displayText(window), QString("5"));
+        QCOMPARE(historyText(window), QString("5"));
     }
 
     // 百分比：当前值除以 100
@@ -339,7 +341,7 @@ private slots:
         clickButton(window, "btnDigit5");
         clickButton(window, "btnDigit0");
         clickButton(window, "btnPercent");
-        QCOMPARE(displayText(window), QString("0.5"));
+        QCOMPARE(historyText(window), QString("0.5"));
     }
 
     // 平方
@@ -350,7 +352,7 @@ private slots:
 
         clickButton(window, "btnDigit5");
         clickButton(window, "btnSquare");
-        QCOMPARE(displayText(window), QString("25"));
+        QCOMPARE(historyText(window), QString("25"));
     }
 
     // 开平方，以及负数开平方进入错误状态
@@ -361,7 +363,7 @@ private slots:
 
         clickButton(window, "btnDigit9");
         clickButton(window, "btnSquareRoot");
-        QCOMPARE(displayText(window), QString("3"));
+        QCOMPARE(historyText(window), QString("3"));
 
         Calculator negative;
         negative.show();
@@ -379,7 +381,7 @@ private slots:
 
         clickButton(window, "btnDigit4");
         clickButton(window, "btnReciprocal");
-        QCOMPARE(displayText(window), QString("0.25"));
+        QCOMPARE(historyText(window), QString("0.25"));
 
         Calculator zero;
         zero.show();
@@ -399,8 +401,16 @@ private slots:
         for (int i = 0; i < 16; ++i) {
             QTest::keyClick(&window, Qt::Key_1 + (i % 9));
         }
-        QCOMPARE(display->text().length(), 16);
-        QVERIFY2(display->font().pointSize() < initialSize, "长数字应缩小字号");
+        // 输入过程中长数字在历史区完整回显，不丢位，此时大框留空
+        QCOMPARE(historyText(window).length(), 16);
+        QVERIFY(display->text().isEmpty());
+
+        // 用 +0= 让长数字进入结果框，超长结果触发字号自适应
+        QTest::keyClick(&window, Qt::Key_Plus);
+        QTest::keyClick(&window, Qt::Key_0);
+        QTest::keyClick(&window, Qt::Key_Return);
+        QVERIFY(!display->text().isEmpty());
+        QVERIFY2(display->font().pointSize() < initialSize, "长结果应缩小字号");
     }
 };
 

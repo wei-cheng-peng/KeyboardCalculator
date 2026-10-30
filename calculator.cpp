@@ -496,7 +496,10 @@ QString Calculator::formatNumber(double value)
 void Calculator::refreshDisplay()
 {
     QLineEdit *display = ui->lineEditDisplay;
-    display->setText(m_currentInput);
+
+    // 大结果框只在出错或按等号出结果时显示，输入过程中留空
+    const QString showText = (m_hasError || m_resultShown) ? m_currentInput : QString();
+    display->setText(showText);
 
     // 根据数字长度自适应字号：文字超宽就逐步缩小，保证完整显示在框内
     int widgetWidth = display->width();
@@ -509,7 +512,7 @@ void Calculator::refreshDisplay()
     int pointSize = 36;
     font.setPointSize(pointSize);
     QFontMetrics metrics(font);
-    while (metrics.horizontalAdvance(m_currentInput) > available && pointSize > 12) {
+    while (metrics.horizontalAdvance(showText) > available && pointSize > 12) {
         --pointSize;
         font.setPointSize(pointSize);
         metrics = QFontMetrics(font);
@@ -523,8 +526,14 @@ void Calculator::refreshDisplay()
         ui->labelHistory->setText(m_expression + "=");
     } else if (m_waitingForOperand) {
         ui->labelHistory->setText(m_expression);
-    } else if (!m_expression.isEmpty()) {
-        ui->labelHistory->setText(m_expression + m_currentInput);
+    } else {
+        // 输入过程中完整式子（含当前数字）在历史区回显，初始的 0 不显示
+        const QString editingText = m_expression + m_currentInput;
+        if (editingText == "0") {
+            ui->labelHistory->clear();
+        } else {
+            ui->labelHistory->setText(editingText);
+        }
     }
 }
 
